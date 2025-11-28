@@ -160,3 +160,160 @@ public class CubeBehavior : MonoBehaviour
   * **Persistence:** If you change the numbers in the `SuperJumpProfile` while playing, **it saves**\! (Normal scripts reset when you stop playing; Scriptable Objects remember your changes).
 
 
+Here is the **completely updated Student Manual**.
+
+I have rewritten **Phase 3** and **Phase 5** so the default behavior is now "Press Space to Jump." This allows you to test the "Live Tuning" features immediately without modifying code later.
+
+-----
+
+# (Real-Time Edition)
+
+**Project Goal:** Create two cubes that share the same "Jump Data" chip. We will make them jump by pressing **Space**, allowing us to change their jump height while the game is running to see instant updates.
+
+-----
+
+## Phase 1: The "Hardware" Setup (Scene Creation)
+
+*Think of this as building the physical box for your project.*
+
+1.  **Open Unity** and create a new **3D Project**.
+2.  **Create the Floor:**
+      * Right-click in the **Hierarchy** window (left side).
+      * Select **3D Object** -\> **Plane**.
+      * In the Inspector, set Scale to `(2, 1, 2)` so it is big.
+3.  **Create the Cubes:**
+      * Right-click in Hierarchy -\> **3D Object** -\> **Cube**. Name it `Cube A`.
+      * Right-click in Hierarchy -\> **3D Object** -\> **Cube**. Name it `Cube B`.
+      * Use the **Move Tool** (press `W`) to separate them so they aren't touching.
+4.  **Add Physics:**
+      * Select **both** `Cube A` and `Cube B`.
+      * In the **Inspector** (right side), click **Add Component**.
+      * Search for **Rigidbody** and click it. (This adds gravity).
+
+-----
+
+## Phase 2: The "Chip" (Scriptable Object Script)
+
+*This is the blueprint for our data file. It is NOT a script that goes on an object.*
+
+1.  **Create the Script:**
+      * In the **Project** window (bottom), Right-click -\> **Create** -\> **C\# Script**.
+      * **NAME IT EXACTLY:** `CubeJumpData` (Case sensitive\!).
+2.  **Write the Code:**
+      * Double-click the script. Delete all code. Paste this:
+
+<!-- end list -->
+
+```csharp
+using UnityEngine;
+
+// This line adds a shortcut to the Unity Right-Click menu
+[CreateAssetMenu(fileName = "NewJumpData", menuName = "ScriptableObjects/CubeJumpData", order = 1)]
+public class CubeJumpData : ScriptableObject 
+{
+    // These are the settings we want to share
+    public float jumpForce = 10f;
+    public float acceleration = 5f;
+}
+```
+
+-----
+
+## Phase 3: The "Logic Board" (Behavior Script)
+
+*This script goes on the Cubes. It tells them to listen for the Spacebar and read the data from the chip.*
+
+1.  **Create the Script:**
+      * In the **Project** window, Right-click -\> **Create** -\> **C\# Script**.
+      * Name it `CubeBehavior`.
+2.  **Write the Code:**
+      * Double-click and paste this **updated code**:
+
+<!-- end list -->
+
+```csharp
+using UnityEngine;
+
+public class CubeBehavior : MonoBehaviour
+{
+    // 1. INPUT SLOT: We create a slot in the Inspector to drag our data file into
+    public CubeJumpData jumpData; 
+
+    private Rigidbody rb;
+
+    void Start()
+    {
+        // Find the Rigidbody attached to this specific cube
+        rb = GetComponent<Rigidbody>();
+    }
+
+    // Update runs every single frame (approx. 60 times a second)
+    void Update()
+    {
+        // 2. TRIGGER: If the user presses Space, try to jump
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            PerformJump();
+        }
+    }
+
+    void PerformJump()
+    {
+        // Safety Check: Did we forget to plug the wire in?
+        if (jumpData == null)
+        {
+            Debug.LogError("Hey! You forgot to attach the Jump Data to " + gameObject.name);
+            return;
+        }
+
+        // 3. READ DATA: We ask the external file "How high should I jump?"
+        Vector3 upwardForce = Vector3.up * jumpData.jumpForce;
+        
+        // Reset speed so we don't fly into space if we spam the button
+        rb.velocity = Vector3.zero; 
+
+        // Apply the physical push
+        rb.AddForce(upwardForce, ForceMode.Impulse);
+    }
+}
+```
+
+-----
+
+## Phase 4: The "Wiring" (Connecting it all)
+
+*This is where we connect the code to the objects.*
+
+### Step A: Manufacture the Data Chip
+
+1.  Go to your **Project Window**.
+2.  Right-click in empty space -\> **Create**.
+3.  Select **ScriptableObjects** -\> **CubeJumpData**. (This option exists because of the code in Phase 2).
+4.  
+5.  Name the new file `SuperJumpProfile`.
+6.  Click on `SuperJumpProfile`. In the Inspector, verify `Jump Force` is **10**.
+
+### Step B: Wire the Cubes
+
+1.  Select `Cube A` in the Hierarchy.
+2.  Drag the `CubeBehavior` script onto `Cube A` in the Inspector.
+3.  **The Wiring:** You will see a slot named **Jump Data** that says "None". Drag your `SuperJumpProfile` file into that slot.
+4.  
+5.  Repeat these steps for `Cube B`.
+
+-----
+
+## Phase 5: Testing & Live Tuning (The Final Exam)
+
+*Now we see why this method is better than normal variables.*
+
+1.  Press the **Play Button** at the top.
+2.  **Action:** Press the **Space Bar**.
+      * *Result:* Both cubes jump slightly.
+3.  **Live Tuning (The Magic Trick):**
+      * **Do not stop the game.** Keep it playing.
+      * Click on the `SuperJumpProfile` file in your Project window.
+      * Change the **Jump Force** from `10` to `30`.
+      * Click back on the Game Screen.
+4.  **Action:** Press the **Space Bar** again.
+      * *Result:* Both cubes now jump **three times higher** instantly.
