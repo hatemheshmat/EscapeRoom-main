@@ -323,7 +323,7 @@ _____________________________________________________
 
 -----
 
-# Student Task: The "Scene Runner" Project
+# Student Task 2: The "Scene Runner" Project
 
 **Project Goal:** Create a 4-scene loop. The player enters their name, plays through two levels by hitting objects, and sees a personalized "You Win" screen at the end.
 
