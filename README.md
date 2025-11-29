@@ -530,3 +530,172 @@ public class WinDisplay : MonoBehaviour
 ### Why this is powerful
 
 You just learned how to **pass data across time and space**. Scene 1 and Scene 4 never touch each other, but `PlayerPrefs` acts as a bridge to carry the information (the name) across the gap.
+
+
+
+___________________________________________________
+
+This is **Part 2** of the "Scene Runner" module.
+-----
+
+# 🎓 Student Task: The "Async" Upgrade
+
+**Objective:** Refactor your existing Scene Runner project to load levels in the background without freezing the game engine.
+
+## 🧠 The Concept: Synchronous vs. Asynchronous
+
+  * **Synchronous (`LoadScene`):** Like ordering food at a counter and standing there staring at the cashier until the food is ready. You cannot do anything else. The game freezes.
+  * **Asynchronous (`LoadSceneAsync`):** Like getting a buzzer at a restaurant. You go sit down, check your phone (animations play), and wait for the buzzer to ring. The game keeps running.
+
+-----
+
+## Phase 1: Upgrading the Menu (Scene 1)
+
+*We need to change how the game starts. Instead of a direct jump, we will start a "Coroutine" process.*
+
+1.  Open your **MenuManager.cs** script.
+2.  Replace the entire code with this upgraded version.
+
+### 📄 Updated Code: MenuManager.cs
+
+```csharp
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
+using System.Collections; // REQUIRED for Coroutines (IEnumerator)
+
+public class MenuManager : MonoBehaviour
+{
+    public TMP_InputField nameInput;
+    public TMP_Text statusText; // Optional: Create a text to say "Loading..."
+
+    public void StartGame()
+    {
+        // 1. Save the name (Same as before)
+        PlayerPrefs.SetString("SavedName", nameInput.text);
+
+        // 2. THE UPGRADE: Don't load directly. Start the routine.
+        StartCoroutine(LoadLevelAsync("Level1"));
+    }
+
+    // This is a Coroutine. It allows code to pause and resume.
+    IEnumerator LoadLevelAsync(string sceneName)
+    {
+        // Optional: Update UI to show we are working
+        if(statusText != null) statusText.text = "Loading...";
+
+        // Start the background process
+        AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName);
+
+        // While the operation is NOT done, we wait here
+        while (!operation.isDone)
+        {
+            // "yield return null" tells Unity: "Stop here, render the frame, 
+            // come back to this line in the next frame."
+            yield return null; 
+        }
+    }
+}
+```
+
+### 🔌 Wiring Update:
+
+  * If you added a `statusText` variable, create a new Text object in your Canvas that says "Loading..." and drag it into the slot. If not, leave it empty.
+
+-----
+
+## Phase 2: Upgrading the Portals (Scenes 2 & 3)
+
+*Now we must update the portal object that moves us from Level 1 -\> Level 2 -\> Win Screen.*
+
+1.  Open your **LevelLoader.cs** script.
+2.  Refactor the code to use the Async method.
+
+### 📄 Updated Code: LevelLoader.cs
+
+```csharp
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Collections; // Don't forget this!
+
+public class LevelLoader : MonoBehaviour
+{
+    public string nextSceneName;
+
+    private bool isLoading = false; // Prevent double triggering
+
+    void OnTriggerEnter(Collider other)
+    {
+        // Only trigger if it's the player AND we aren't already loading
+        if (other.CompareTag("Player") && !isLoading)
+        {
+            StartCoroutine(LoadLevelAsync());
+        }
+    }
+
+    IEnumerator LoadLevelAsync()
+    {
+        isLoading = true; // Lock the door so we don't trigger it twice
+        Debug.Log("Starting Async Load for: " + nextSceneName);
+
+        // The Async magic
+        AsyncOperation operation = SceneManager.LoadSceneAsync(nextSceneName);
+
+        // Loop until finished
+        while (!operation.isDone)
+        {
+            // Imagine a loading bar here:
+            // float progress = Mathf.Clamp01(operation.progress / 0.9f);
+            // Debug.Log("Loading Progress: " + (progress * 100) + "%");
+
+            yield return null; // Wait for the next frame
+        }
+    }
+}
+```
+
+### 🔌 Wiring Update:
+
+  * No changes needed in the Inspector\! Because we kept the variable `nextSceneName` public, your previous connections (`Level2`, `WinScreen`) are still saved.
+  * **Pro Tip:** Ensure your Player Cube has the Tag **"Player"** in the top left of the Inspector, or the `CompareTag` check will fail.
+
+-----
+
+## Phase 3: The Deep Dive Explanation
+
+*Student, pay attention. This is what separates coders from engineers.*
+
+### 1\. What is `IEnumerator`?
+
+Standard functions run from top to bottom instantly. An `IEnumerator` is a function that can **pause**. It tells Unity: "I'm not done yet, come back to me later." This is essential for loading because loading takes time.
+
+### 2\. `StartCoroutine`
+
+You cannot call `LoadLevelAsync()` like a normal function. You must wrap it in `StartCoroutine()`. This creates a separate thread of execution logic that runs alongside your game loop.
+
+### 3\. `AsyncOperation`
+
+This variable is your handle on the loading process. It contains data like:
+
+  * `.progress`: How much of the scene is loaded (0.0 to 1.0).
+  * `.isDone`: Is it finished?
+
+### 4\. `yield return null`
+
+This is the most important line.
+
+  * **Without it:** The `while` loop would run infinite times *in a single frame*, freezing your computer.
+  * **With it:** The loop runs once, then Unity renders the game, handles input, draws the screen, and *then* comes back to the loop. This keeps the game "alive" while loading.
+
+-----
+
+## ✅ Final Verification Task
+
+1.  **Play Scene 1.** Enter Name. Click Start.
+      * *Observation:* It should transition to Level 1.
+2.  **Level 1:** Touch the portal.
+      * *Observation:* Watch the **Console**. You should see "Starting Async Load for: Level2".
+3.  **Level 2:** Touch the portal.
+      * *Observation:* Transition to Win Screen.
+
+*Note: Since your scenes are very small (just cubes and planes), the loading will happen almost instantly. You won't "feel" the background loading yet, but the code architecture is now ready for a massive open-world game.*
