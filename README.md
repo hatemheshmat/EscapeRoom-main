@@ -317,3 +317,216 @@ public class CubeBehavior : MonoBehaviour
       * Click back on the Game Screen.
 4.  **Action:** Press the **Space Bar** again.
       * *Result:* Both cubes now jump **three times higher** instantly.
+
+_____________________________________________________
+
+
+-----
+
+# Student Task: The "Scene Runner" Project
+
+**Project Goal:** Create a 4-scene loop. The player enters their name, plays through two levels by hitting objects, and sees a personalized "You Win" screen at the end.
+
+## 🛠️ Prerequisites
+
+  * **Concepts:** `SceneManager`, `PlayerPrefs` (Unity's way of saving simple data), Colliders.
+  * **Assets:** Just basic Cubes, Planes, and UI.
+
+-----
+
+## Phase 1: The "Map" (Scene Setup)
+
+*Unity doesn't know your scenes exist until you register them.*
+
+1.  **Create 4 Scenes:**
+      * In the **Project Window**, Right-click -\> **Create** -\> **Scene**.
+      * Name them exactly: `Menu`, `Level1`, `Level2`, `WinScreen`.
+2.  **Register them in Build Settings:**
+      * Go to **File** (top left) -\> **Build Settings**.
+      * Drag all 4 scenes from your Project Window into the "Scenes In Build" list.
+      * **Crucial Order:** Ensure they are ordered:
+          * 0: `Menu`
+          * 1: `Level1`
+          * 2: `Level2`
+          * 3: `WinScreen`
+
+-----
+
+## Phase 2: Scene 1 (The Menu & Input)
+
+*Goal: Save the user's name and switch to the game.*
+
+1.  **Open Scene:** Double-click `Menu`.
+2.  **Create the UI:**
+      * Right-click in Hierarchy -\> **UI** -\> **Input Field - TextMeshPro** (Import TMP Essentials if asked).
+      * Right-click in Hierarchy -\> **UI** -\> **Button - TextMeshPro**.
+3.  **The Script (MenuManager):**
+      * Create a script named `MenuManager`.
+      * Paste this code:
+
+<!-- end list -->
+
+```csharp
+using UnityEngine;
+using UnityEngine.SceneManagement; // Needed to change scenes
+using TMPro; // Needed to read the Input Field
+
+public class MenuManager : MonoBehaviour
+{
+    public TMP_InputField nameInput;
+
+    public void StartGame()
+    {
+        // 1. SAVE DATA: Store the text typed in the box into a key called "SavedName"
+        PlayerPrefs.SetString("SavedName", nameInput.text);
+        
+        // 2. CHANGE SCENE: Load the next scene (Level1)
+        SceneManager.LoadScene("Level1");
+    }
+}
+```
+
+4.  **Wiring:**
+      * Create an **Empty GameObject** (Right-click -\> Create Empty), name it `Manager`.
+      * Drag the `MenuManager` script onto `Manager`.
+      * Drag your **Input Field** from the Hierarchy into the **Name Input** slot in the Inspector.
+      * Select your **Button**. In the Inspector, scroll to **On Click ()**.
+      * Click `+`. Drag the `Manager` object into the slot.
+      * Select the function: `MenuManager` -\> `StartGame`.
+
+-----
+
+## Phase 3: The Player Movement (Shared Script)
+
+*We need a simple script to move the player in Level 1 and 2.*
+
+1.  Create a script named `SimpleMove`.
+2.  Paste this code:
+
+<!-- end list -->
+
+```csharp
+using UnityEngine;
+
+public class SimpleMove : MonoBehaviour
+{
+    public float speed = 10f;
+
+    void Update()
+    {
+        // Basic arrow key movement
+        float x = Input.GetAxis("Horizontal") * speed * Time.deltaTime;
+        float z = Input.GetAxis("Vertical") * speed * Time.deltaTime;
+
+        transform.Translate(x, 0, z);
+    }
+}
+```
+
+-----
+
+## Phase 4: Scene 2 (Level 1)
+
+*Goal: Move player to hit a cube to advance.*
+
+1.  **Open Scene:** Double-click `Level1`.
+2.  **Setup World:**
+      * Add a **Plane** (Floor).
+      * Add a **Cube** (The Player). Tag it as "Player" (optional, but good practice).
+      * Add the `SimpleMove` script to the Player Cube.
+3.  **The Portal (The Trigger):**
+      * Add another **Cube**. Color it Red (create a material if you want).
+      * **CRITICAL:** In the Box Collider component, check the box **Is Trigger**. (This makes it a ghost you can walk through).
+4.  **The Script (LevelLoader):**
+      * Create a script `LevelLoader`.
+      * Paste this code:
+
+<!-- end list -->
+
+```csharp
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class LevelLoader : MonoBehaviour
+{
+    public string nextSceneName; // We can type the scene name in the Inspector
+
+    // This runs when something enters the "Is Trigger" zone
+    void OnTriggerEnter(Collider other)
+    {
+        // Load whatever name we wrote in the Inspector
+        SceneManager.LoadScene(nextSceneName);
+    }
+}
+```
+
+5.  **Wiring:**
+      * Drag `LevelLoader` onto your **Red Portal Cube**.
+      * In the Inspector, find "Next Scene Name" and type `Level2`.
+
+-----
+
+## Phase 5: Scene 3 (Level 2)
+
+*Goal: Same logic, different destination.*
+
+1.  **Open Scene:** Double-click `Level2`.
+2.  **Shortcut:**
+      * Setup the Plane and Player Cube with `SimpleMove` just like before.
+      * Create the Red Portal Cube (Ensure **Is Trigger** is on).
+      * Add the `LevelLoader` script to the Portal.
+3.  **The Change:**
+      * In the "Next Scene Name" slot on the script, type `WinScreen`.
+
+-----
+
+## Phase 6: Scene 4 (Win Screen)
+
+*Goal: Retrieve the saved name and display it.*
+
+1.  **Open Scene:** Double-click `WinScreen`.
+2.  **Create UI:**
+      * Right-click -\> **UI** -\> **Text - TextMeshPro**.
+      * Make it big and center it.
+3.  **The Script (WinDisplay):**
+      * Create a script named `WinDisplay`.
+      * Paste this code:
+
+<!-- end list -->
+
+```csharp
+using UnityEngine;
+using TMPro;
+
+public class WinDisplay : MonoBehaviour
+{
+    public TMP_Text messageText;
+
+    void Start()
+    {
+        // 1. RETRIEVE DATA: Get the name we saved in Scene 1
+        // If no name was saved, default to "Player"
+        string username = PlayerPrefs.GetString("SavedName", "Player");
+
+        // 2. DISPLAY IT
+        messageText.text = "YOU WIN, " + username + "!";
+    }
+}
+```
+
+4.  **Wiring:**
+      * Attach `WinDisplay` to your **Text** object (or an empty manager).
+      * Drag the **Text** object itself into the **Message Text** slot.
+
+-----
+
+## Final Checklist for the Student
+
+1.  **Play Scene 1:** Type "SuperStudent". Click Button.
+2.  **Level 1:** Move cube into the portal. -\> *Should load Level 2.*
+3.  **Level 2:** Move cube into the portal. -\> *Should load WinScreen.*
+4.  **WinScreen:** Should read "YOU WIN, SuperStudent\!".
+
+### Why this is powerful
+
+You just learned how to **pass data across time and space**. Scene 1 and Scene 4 never touch each other, but `PlayerPrefs` acts as a bridge to carry the information (the name) across the gap.
